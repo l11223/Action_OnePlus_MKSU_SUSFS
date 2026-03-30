@@ -115,35 +115,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Nuke EVERYTHING for max space
-        run: |
-          df -h
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
-            /usr/local/share/boost /usr/share/swift /usr/local/.ghcup \
-            /opt/hostedtoolcache /usr/local/graalvm /usr/local/share/powershell \
-            /usr/local/share/chromium /usr/local/lib/node_modules \
-            /opt/az /opt/microsoft /opt/pipx /opt/google /usr/share/miniconda \
-            /usr/lib/google-cloud-sdk /usr/lib/jvm /usr/lib/mono \
-            /usr/lib/firefox /usr/lib/thunderbird /usr/share/icons \
-            /usr/share/doc /usr/share/man /usr/share/locale \
-            /home/runner/.cargo /home/runner/.rustup /home/runner/.dotnet \
-            /home/runner/.ghcup /home/runner/.config /imagegeneration
-          sudo docker image prune -af 2>/dev/null || true
-          sudo docker system prune -af 2>/dev/null || true
-          sudo systemctl stop docker 2>/dev/null || true
-          sudo rm -rf /var/lib/docker
-          sudo apt-get purge -y 'dotnet-*' 'aspnetcore-*' 'mono-*' 'php*' 'mysql*' \
-            'postgresql*' google-chrome-stable firefox microsoft-edge-stable \
-            google-cloud-cli azure-cli snapd containerd.io moby-* 'temurin-*' \
-            'adoptium-*' 'libllvm*' 'clang-*' 'llvm-*' podman buildah skopeo 2>/dev/null || true
-          sudo apt-get autoremove -y 2>/dev/null || true
-          sudo apt-get clean
-          sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/cache/* /var/lib/snapd
-          sudo swapoff -a && sudo rm -f /swapfile /mnt/swapfile
-          sudo fallocate -l 2G /mnt/swapfile && sudo chmod 600 /mnt/swapfile && sudo mkswap /mnt/swapfile && sudo swapon /mnt/swapfile
-          echo "=== FINAL SPACE ==="
-          df -h
-          free -h
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 8192
+          temp-reserve-mb: 2048
+          swap-size-mb: 8192
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
 
       - name: Configure Git
         run: |
@@ -152,7 +133,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y python3 git curl
+          sudo apt update && sudo apt upgrade -y
+          sudo apt install -y python3 git curl
 
       - name: Show selected inputs debug
         run: |
@@ -175,14 +157,10 @@ jobs:
 
       - name: Initialize repo and sync
         run: |
-          sudo mkdir -p /mnt/build && sudo chown $USER:$USER /mnt/build
-          ln -s /mnt/build kernel_workspace
-          cd kernel_workspace
-          df -h / /mnt
+          mkdir kernel_workspace && cd kernel_workspace
           repo init -u https://github.com/OnePlusOSS/kernel_manifest.git -b refs/heads/oneplus/${{ github.event.inputs.CPU }} -m ${{ github.event.inputs.FEIL }}.xml --depth=1 --groups=default,-ddk,-ddk-external
           sed -i 's| upstream="refs/heads/[^"]*"||g' .repo/manifests/${{ github.event.inputs.FEIL }}.xml
-          repo sync -c --no-tags --force-sync --no-clone-bundle -j$(nproc) --optimized-fetch
-          df -h / /mnt
+          repo sync -c --no-tags --force-sync --no-clone-bundle -j$(nproc)
           if [  -e kernel_platform/common/BUILD.bazel ]; then
           sed -i '/^[[:space:]]*"protected_exports_list"[[:space:]]*:[[:space:]]*"android\/abi_gki_protected_exports_aarch64",$/d' kernel_platform/common/BUILD.bazel
           fi
@@ -220,7 +198,6 @@ jobs:
           echo '' >> Kbuild
           echo 'KSU_EXPECTED_SIZE2 := 0x036d' >> Kbuild
           echo 'KSU_EXPECTED_HASH2 := 733b98892252160a3b8da0cc953313a8ec418a315320b88d939d5bfee5356944' >> Kbuild
-          echo '-- Custom Manager cert injected'
 
       - name: Apply Patches SukiSU Ultra
         run: |
