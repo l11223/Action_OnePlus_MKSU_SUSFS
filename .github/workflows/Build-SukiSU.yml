@@ -191,6 +191,14 @@ jobs:
           export KSU_VERSION=$KSU_VERSION
           sed -i "s/DKSU_VERSION=12800/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
 
+      - name: Add custom Manager signing certificate
+        run: |
+          cd kernel_workspace/kernel_platform/KernelSU/kernel
+          echo '' >> Kbuild
+          echo 'KSU_EXPECTED_SIZE2 := 0x036d' >> Kbuild
+          echo 'KSU_EXPECTED_HASH2 := 733b98892252160a3b8da0cc953313a8ec418a315320b88d939d5bfee5356944' >> Kbuild
+          echo '-- Custom Manager cert injected'
+
       - name: Apply Patches SukiSU Ultra
         run: |
           cd kernel_workspace
