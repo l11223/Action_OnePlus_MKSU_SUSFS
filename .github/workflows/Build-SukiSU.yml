@@ -115,36 +115,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Nuke everything for max space
+      - name: Nuke EVERYTHING for max space
         run: |
-          echo "=== Before cleanup ==="
-          df -h /
+          df -h
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
             /usr/local/share/boost /usr/share/swift /usr/local/.ghcup \
             /opt/hostedtoolcache /usr/local/graalvm /usr/local/share/powershell \
             /usr/local/share/chromium /usr/local/lib/node_modules \
-            /opt/az /opt/microsoft /opt/pipx /opt/google
+            /opt/az /opt/microsoft /opt/pipx /opt/google /usr/share/miniconda \
+            /usr/lib/google-cloud-sdk /usr/lib/jvm /usr/lib/mono \
+            /usr/lib/firefox /usr/lib/thunderbird /usr/share/icons \
+            /usr/share/doc /usr/share/man /usr/share/locale \
+            /home/runner/.cargo /home/runner/.rustup /home/runner/.dotnet \
+            /home/runner/.ghcup /home/runner/.config /imagegeneration
           sudo docker image prune -af 2>/dev/null || true
-          sudo apt-get purge -y 'dotnet-*' 'aspnetcore-*' 'mono-*' google-chrome-stable \
-            firefox microsoft-edge-stable google-cloud-cli azure-cli snapd \
-            temurin-*-jdk adoptium-*-jdk 2>/dev/null || true
+          sudo docker system prune -af 2>/dev/null || true
+          sudo systemctl stop docker 2>/dev/null || true
+          sudo rm -rf /var/lib/docker
+          sudo apt-get purge -y 'dotnet-*' 'aspnetcore-*' 'mono-*' 'php*' 'mysql*' \
+            'postgresql*' google-chrome-stable firefox microsoft-edge-stable \
+            google-cloud-cli azure-cli snapd containerd.io moby-* 'temurin-*' \
+            'adoptium-*' 'libllvm*' 'clang-*' 'llvm-*' podman buildah skopeo 2>/dev/null || true
           sudo apt-get autoremove -y 2>/dev/null || true
           sudo apt-get clean
-          sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/cache/*
+          sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/cache/* /var/lib/snapd
           sudo swapoff -a && sudo rm -f /swapfile /mnt/swapfile
-          echo "=== After cleanup ==="
-          df -h /
-
-      - name: Maximize build space
-        uses: easimon/maximize-build-space@master
-        with:
-          root-reserve-mb: 4096
-          temp-reserve-mb: 1024
-          swap-size-mb: 4096
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
-          remove-codeql: 'true'
+          sudo fallocate -l 2G /mnt/swapfile && sudo chmod 600 /mnt/swapfile && sudo mkswap /mnt/swapfile && sudo swapon /mnt/swapfile
+          echo "=== FINAL SPACE ==="
+          df -h
+          free -h
 
       - name: Configure Git
         run: |
