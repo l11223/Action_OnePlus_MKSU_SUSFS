@@ -115,12 +115,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Nuke everything for max space
+        run: |
+          echo "=== Before cleanup ==="
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /usr/local/share/boost /usr/share/swift /usr/local/.ghcup \
+            /opt/hostedtoolcache /usr/local/graalvm /usr/local/share/powershell \
+            /usr/local/share/chromium /usr/local/lib/node_modules \
+            /opt/az /opt/microsoft /opt/pipx /opt/google
+          sudo docker image prune -af 2>/dev/null || true
+          sudo apt-get purge -y 'dotnet-*' 'aspnetcore-*' 'mono-*' google-chrome-stable \
+            firefox microsoft-edge-stable google-cloud-cli azure-cli snapd \
+            temurin-*-jdk adoptium-*-jdk 2>/dev/null || true
+          sudo apt-get autoremove -y 2>/dev/null || true
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/cache/*
+          sudo swapoff -a && sudo rm -f /swapfile /mnt/swapfile
+          echo "=== After cleanup ==="
+          df -h /
+
       - name: Maximize build space
         uses: easimon/maximize-build-space@master
         with:
-          root-reserve-mb: 8192
-          temp-reserve-mb: 2048
-          swap-size-mb: 8192
+          root-reserve-mb: 4096
+          temp-reserve-mb: 1024
+          swap-size-mb: 4096
           remove-dotnet: 'true'
           remove-android: 'true'
           remove-haskell: 'true'
@@ -133,8 +153,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt update && sudo apt upgrade -y
-          sudo apt install -y python3 git curl
+          sudo apt-get update && sudo apt-get install -y python3 git curl
 
       - name: Show selected inputs debug
         run: |
