@@ -175,10 +175,14 @@ jobs:
 
       - name: Initialize repo and sync
         run: |
-          mkdir kernel_workspace && cd kernel_workspace
-          repo init -u https://github.com/OnePlusOSS/kernel_manifest.git -b refs/heads/oneplus/${{ github.event.inputs.CPU }} -m ${{ github.event.inputs.FEIL }}.xml --depth=1
+          sudo mkdir -p /mnt/build && sudo chown $USER:$USER /mnt/build
+          ln -s /mnt/build kernel_workspace
+          cd kernel_workspace
+          df -h / /mnt
+          repo init -u https://github.com/OnePlusOSS/kernel_manifest.git -b refs/heads/oneplus/${{ github.event.inputs.CPU }} -m ${{ github.event.inputs.FEIL }}.xml --depth=1 --groups=default,-ddk,-ddk-external
           sed -i 's| upstream="refs/heads/[^"]*"||g' .repo/manifests/${{ github.event.inputs.FEIL }}.xml
-          repo sync -c --no-tags --force-sync --no-clone-bundle -j$(nproc)
+          repo sync -c --no-tags --force-sync --no-clone-bundle -j$(nproc) --optimized-fetch
+          df -h / /mnt
           if [  -e kernel_platform/common/BUILD.bazel ]; then
           sed -i '/^[[:space:]]*"protected_exports_list"[[:space:]]*:[[:space:]]*"android\/abi_gki_protected_exports_aarch64",$/d' kernel_platform/common/BUILD.bazel
           fi
